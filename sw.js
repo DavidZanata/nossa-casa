@@ -2,7 +2,7 @@
    Deixa o app abrir rápido (e mesmo sem internet) e recebe as notificações. */
 importScripts('config.js');
 
-const VERSAO = 'nossa-casa-v2.0';
+const VERSAO = 'nossa-casa-v2.2';
 const ARQUIVOS = ['./', './index.html', './config.js', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

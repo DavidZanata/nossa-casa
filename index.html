@@ -226,9 +226,12 @@ input,textarea{font:inherit;font-size:16px;color:var(--ink)}
 #sheet-root.open{pointer-events:auto}
 .scrim{position:absolute;inset:0;background:rgba(35,20,20,.42);opacity:0;transition:opacity .25s}
 .show .scrim{opacity:1}
-.sheet{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:560px;background:var(--surface);border-radius:28px 28px 0 0;padding:10px 20px calc(22px + env(safe-area-inset-bottom,0px));max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateY(105%);transition:transform .32s cubic-bezier(.2,.85,.25,1)}
+.sheet{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:560px;background:var(--surface);border-radius:28px 28px 0 0;padding:24px 20px calc(22px + env(safe-area-inset-bottom,0px));max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateY(105%);transition:transform .32s cubic-bezier(.2,.85,.25,1)}
 .show .sheet{transform:none}
-.grab{width:42px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 14px}
+.sheet{overscroll-behavior:contain}
+.sheet-x{position:absolute;top:20px;right:16px;width:36px;height:36px;border-radius:50%;background:var(--surface-2);color:var(--ink-2);display:grid;place-items:center;z-index:2}
+.sheet-x .ic{width:18px;height:18px;stroke-width:2.2}
+.sheet h3{padding-right:44px}
 .sheet h3{font-family:var(--display);font-weight:400;font-size:25px;margin:0 0 18px}
 .field{margin-bottom:14px}
 .field>label{display:block;font-size:13.5px;font-weight:700;color:var(--ink-2);margin:0 0 6px 2px}
@@ -797,13 +800,15 @@ function render() {
 /* ═════════ Folha inferior ═════════ */
 function abrirFolha(html, attrs) {
   const root = $('#sheet-root');
-  root.innerHTML = `<div class="scrim" data-act="fecharFolha"></div><div class="sheet" role="dialog" aria-modal="true" ${attrs || ''}><div class="grab"></div>${html}</div>`;
+  root.innerHTML = `<div class="scrim" data-act="fecharFolha"></div><div class="sheet" role="dialog" aria-modal="true" ${attrs || ''}>
+    <button class="sheet-x" data-act="fecharFolha" aria-label="Fechar">${icon('x')}</button>${html}</div>`;
   root.classList.add('open');
   requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('show')));
   atualizarCampos();
 }
 function fecharFolha() {
   const root = $('#sheet-root');
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   root.classList.remove('show');
   setTimeout(() => { root.innerHTML = ''; root.classList.remove('open'); }, 300);
 }
