@@ -190,6 +190,37 @@ input,textarea{font:inherit;font-size:16px;color:var(--ink)}
 .addbar button{width:46px;border-radius:14px;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;flex:none}
 .item-qtd{font-size:13px;font-weight:700;color:var(--ink-2);background:var(--surface-2);padding:2px 9px;border-radius:99px;white-space:nowrap}
 
+/* Mercado: categorias, carrinho e histórico */
+.cat-pick{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 4px;margin:-8px 0 16px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.cat-pick::-webkit-scrollbar{display:none}
+.cat-pick button{flex:none;padding:7px 12px;border-radius:99px;background:var(--surface);box-shadow:var(--shadow);font-weight:700;font-size:13px;color:var(--ink-2);white-space:nowrap}
+.cat-pick button.on{background:var(--ink);color:var(--paper)}
+.cat-h{display:flex;align-items:center;gap:8px;padding:14px 0 6px;font-weight:800;font-size:15px}
+.cat-h .n{margin-left:auto;font-size:12.5px;font-weight:700;color:var(--ink-3)}
+.cat-h + .row{border-top:0}
+.cat-ic{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:var(--surface-2);font-size:16px}
+.edit-btn{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:var(--ink-3);flex:none}
+.edit-btn .ic{width:18px;height:18px}
+.cartbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + max(12px,env(safe-area-inset-bottom,0px)));width:min(524px,calc(100% - 32px));background:var(--ink);color:var(--paper);border-radius:20px;padding:10px 10px 10px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 14px 30px -10px rgba(40,20,20,.55);z-index:20}
+.cartbar .t{flex:1;line-height:1.2}
+.cartbar .t small{display:block;font-size:12px;opacity:.7;font-weight:600}
+.cartbar .t b{font-size:19px;font-variant-numeric:tabular-nums}
+.cartbar button{background:var(--paper);color:var(--ink);font-weight:800;font-size:14px;padding:11px 14px;border-radius:14px}
+.cartbar button.armed{background:var(--red-soft);color:var(--red)}
+.total-box{display:flex;justify-content:space-between;align-items:baseline;background:var(--surface-2);border-radius:16px;padding:14px 16px;margin:4px 0 14px}
+.total-box span{color:var(--ink-2);font-weight:600}
+.total-box b{font-family:var(--display);font-weight:400;font-size:26px;font-variant-numeric:tabular-nums}
+.ultimo{font-size:13.5px;color:var(--ink-2);background:var(--surface-2);border-radius:14px;padding:11px 14px;margin:-4px 0 14px}
+.var{font-weight:800;font-size:12.5px;white-space:nowrap}
+.var.up{color:var(--red)} .var.down{color:var(--sage)} .var.eq{color:var(--ink-3)}
+.seg.chips{flex-wrap:wrap}
+.seg.chips button{flex:1 1 30%}
+.busca{width:100%;padding:12px 14px;border-radius:16px;border:0;background:var(--surface);box-shadow:var(--shadow);outline:none;margin-bottom:12px}
+.mini-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}
+.mini-stats div{background:var(--surface-2);border-radius:14px;padding:10px 12px}
+.mini-stats span{display:block;font-size:12px;color:var(--ink-2);font-weight:600}
+.mini-stats b{font-variant-numeric:tabular-nums}
+
 /* Datas */
 .cal-head{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:12px;font-weight:700;color:var(--ink-3);padding:10px 0 4px}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding-bottom:10px}
@@ -364,7 +395,8 @@ const S = {
   data: null, user: null, tab: 'inicio', pending: 0,
   fin: { view: 'Nós dois', ym: curYM(), sub: 'contas' },
   tar: { date: today(), edit: false },
-  dat: { ym: curYM(), sel: null }
+  dat: { ym: curYM(), sel: null },
+  mer: { sub: 'lista', cat: null, catManual: false, busca: '' }
 };
 const pessoas = () => (S.data && S.data.pessoas) || ['David', 'Gabi'];
 const outra = () => pessoas().find(p => p !== S.user) || pessoas()[0];
@@ -707,24 +739,144 @@ function vTar() {
 }
 
 /* ═════════ Tela: Mercado ═════════ */
+const CATS = [
+  ['mercearia', 'Mercearia', '🥫'], ['varejao', 'Varejão', '🥬'], ['acougue', 'Açougue', '🥩'],
+  ['limpeza', 'Limpeza e higiene', '🧼'], ['outros', 'Outros', '🛒']
+];
+const catInfo = c => CATS.find(x => x[0] === c) || CATS[4];
+const chave = n => String(n || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+/* Classificação automática: palavras conhecidas + o que vocês já corrigiram */
+const DIC = {
+  varejao: 'alface tomate cebola alho batata cenoura banana maca laranja limao mamao melancia melao abacaxi uva morango abacate manga pera kiwi pepino abobrinha abobora berinjela pimentao chuchu beterraba couve repolho brocolis espinafre rucula agriao salsinha cebolinha coentro hortela manjericao mandioca aipim inhame mandioquinha gengibre quiabo vagem ovo fruta verdura legume tangerina mexerica ponkan goiaba maracuja caqui ameixa pessego jilo almeirao acelga milho',
+  acougue: 'carne frango peito coxa sobrecoxa asa file picanha alcatra contrafile patinho acem musculo costela cupim maminha fraldinha linguica salsicha bacon calabresa pernil lombo bisteca porco suino moida hamburguer peixe tilapia salmao camarao figado coracao coxao paleta copa linguicinha bife',
+  limpeza: 'detergente sabao amaciante alvejante desinfetante multiuso esponja bombril cloro veja ype omo inseticida lustra cera vassoura rodo flanela papel sabonete shampoo xampu condicionador desodorante absorvente fralda cotonete algodao lamina gilete protetor hidratante enxaguante escova saco limpador tira-manchas lenco',
+  mercearia: 'arroz feijao macarrao oleo azeite acucar sal cafe leite farinha fuba molho extrato biscoito bolacha achocolatado manteiga margarina queijo presunto mortadela iogurte requeijao pao cereal aveia granola atum sardinha maionese ketchup mostarda tempero vinagre refrigerante suco agua cerveja vinho chocolate doce gelatina fermento sopa miojo pipoca salgadinho geleia mel cha caldo polpa ervilha lentilha grao creme'
+};
+const FRASES = [
+  ['batata palha', 'mercearia'], ['milho verde', 'mercearia'], ['creme de leite', 'mercearia'], ['leite condensado', 'mercearia'],
+  ['leite de coco', 'mercearia'], ['creme dental', 'limpeza'], ['pasta de dente', 'limpeza'], ['escova de dente', 'limpeza'],
+  ['fio dental', 'limpeza'], ['papel higienico', 'limpeza'], ['papel toalha', 'limpeza'], ['agua sanitaria', 'limpeza'],
+  ['saco de lixo', 'limpeza'], ['sabao em po', 'limpeza'], ['palha de aco', 'limpeza'], ['lenco umedecido', 'limpeza'],
+  ['peito de peru', 'mercearia'], ['areia', 'outros'], ['racao', 'outros'], ['ovo de pascoa', 'mercearia']
+];
+const PALAVRA = {};
+Object.entries(DIC).forEach(([cat, lista]) => lista.split(' ').forEach(w => { PALAVRA[w] = cat; }));
+function singular(w) {
+  if (PALAVRA[w]) return w;
+  if (/oes$|aes$/.test(w)) return w.slice(0, -3) + 'ao';
+  if (/is$/.test(w) && PALAVRA[w.slice(0, -2) + 'l']) return w.slice(0, -2) + 'l';
+  if (/s$/.test(w)) return w.slice(0, -1);
+  return w;
+}
+function aprendidos() {
+  const m = {};
+  (S.data.historico || []).slice().sort((a, b) => a.data.localeCompare(b.data)).forEach(h => { if (h.categoria) m[h.chave] = h.categoria; });
+  S.data.mercado.forEach(x => { if (x.categoria) m[chave(x.item)] = x.categoria; });
+  return m;
+}
+function classificar(nome) {
+  const n = chave(nome);
+  if (!n) return 'mercearia';
+  const ap = aprendidos();
+  if (ap[n]) return ap[n];
+  const espaco = ' ' + n + ' ';
+  for (const [f, c] of FRASES) if (espaco.includes(' ' + f + ' ') || espaco.includes(' ' + f + 's ')) return c;
+  for (const w of n.split(' ')) { const c = PALAVRA[singular(w)]; if (c) return c; }
+  return 'mercearia';
+}
+const catDoItem = x => x.categoria || classificar(x.item);
+/* "3", "3 pacotes" → 3. Peso ou volume ("5 kg", "2 litros") → 1, porque o preço costuma ser do pacote. */
+const numQtd = q => {
+  const t = String(q || '').toLowerCase().replace(',', '.');
+  if (/\d\s*(kg|quilo|g\b|gr|grama|l\b|lt|litro|ml)/.test(t)) return 1;
+  const m = t.match(/\d+(\.\d+)?/); return m ? parseFloat(m[0]) : 1;
+};
+const fmtNum = v => String(Math.round(v * 1000) / 1000).replace('.', ',');
+function precosDe(n) {
+  return (S.data.historico || []).filter(h => h.chave === n && h.preco > 0).sort((a, b) => a.data.localeCompare(b.data));
+}
+function variacao(atual, anterior) {
+  if (!(anterior > 0) || !(atual > 0)) return '';
+  const pct = (atual - anterior) / anterior * 100;
+  if (Math.abs(pct) < 0.5) return '<span class="var eq">= igual</span>';
+  return `<span class="var ${pct > 0 ? 'up' : 'down'}">${pct > 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(0)}%</span>`;
+}
+function totalCarrinho() {
+  return S.data.mercado.filter(x => x.comprado).reduce((s, x) => s + (x.preco > 0 ? x.preco * (x.quantidade || 1) : 0), 0);
+}
+
 function vMer() {
-  const m = S.data.mercado;
+  const m = S.data.mercado, sub = S.mer.sub;
   const falta = m.filter(x => !x.comprado), ok = m.filter(x => x.comprado);
-  let h = topo(falta.length ? falta.length + (falta.length > 1 ? ' itens' : ' item') + ' para comprar' : 'Lista compartilhada', 'Mercado');
-  h += `<div class="addbar"><input id="mItem" placeholder="O que acabou?" autocomplete="off" enterkeyhint="done" data-enter="addItem">
+  let h = topo(sub === 'historico' ? 'Preços e compras anteriores' : falta.length ? falta.length + (falta.length > 1 ? ' itens para comprar' : ' item para comprar') : 'Lista compartilhada', 'Mercado');
+  h += `<div class="switcher" style="margin-bottom:16px">${[['lista', 'Lista'], ['historico', 'Histórico']].map(([k, l]) => `<button class="${sub === k ? 'on' : ''}" data-act="merSub" data-s="${k}">${l}</button>`).join('')}</div>`;
+  if (sub === 'historico') return h + vHistorico();
+
+  const nomes = [...new Set([...(S.data.historico || []).map(x => x.item), ...m.map(x => x.item)])].sort();
+  h += `<div class="addbar"><input id="mItem" placeholder="O que acabou?" autocomplete="off" enterkeyhint="done" data-enter="addItem" list="nomesMercado">
     <input id="mQtd" placeholder="Qtd" autocomplete="off" enterkeyhint="done" data-enter="addItem">
-    <button data-act="addItem" aria-label="Adicionar">${icon('plus')}</button></div>`;
-  const linha = x => `<div class="row ${x.comprado ? 'done' : ''}">
-    <button class="check ${x.comprado ? 'on' : ''}" data-act="toggleItem" data-id="${x.id}" aria-label="Marcar">${icon('check')}</button>
-    <button class="row-main" data-act="toggleItem" data-id="${x.id}"><div class="row-title">${esc(x.item)}</div>${x.adicionado_por ? `<div class="row-sub">anotado por ${esc(x.adicionado_por)}</div>` : ''}</button>
-    ${x.qtd ? `<span class="item-qtd">${esc(x.qtd)}</span>` : ''}
-    <button class="x-btn" data-act="delItem" data-id="${x.id}" aria-label="Remover">${icon('x')}</button></div>`;
-  h += falta.length ? `<div class="card">${falta.map(linha).join('')}</div>`
-    : `<div class="card">${vazio('Nada faltando', 'Quando algo acabar, anote aqui. Os dois veem na hora.')}</div>`;
-  if (ok.length) {
-    h += `<div class="sec-h"><h2>No carrinho</h2><button class="link" data-act="limparComprados">Limpar comprados</button></div>
-      <div class="card">${ok.map(linha).join('')}</div>`;
+    <button data-act="addItem" aria-label="Adicionar">${icon('plus')}</button></div>
+    <datalist id="nomesMercado">${nomes.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+    <div class="cat-pick" id="catPick">${CATS.map(([k, l, e]) => `<button class="${S.mer.cat === k ? 'on' : ''}" data-act="catAdd" data-c="${k}">${e} ${l}</button>`).join('')}</div>`;
+
+  const linha = x => {
+    const preco = x.comprado && x.preco > 0
+      ? `${x.quantidade && x.quantidade !== 1 ? fmtNum(x.quantidade) + ' × ' : ''}${money(x.preco)} = <b>${money(x.preco * (x.quantidade || 1))}</b>`
+      : x.comprado ? 'sem preço' : x.adicionado_por ? 'anotado por ' + esc(x.adicionado_por) : '';
+    return `<div class="row ${x.comprado ? 'done' : ''}">
+      <button class="check ${x.comprado ? 'on' : ''}" data-act="toggleItem" data-id="${x.id}" aria-label="${x.comprado ? 'Tirar do carrinho' : 'Pegar'}">${icon('check')}</button>
+      <button class="row-main" data-act="toggleItem" data-id="${x.id}"><div class="row-title">${esc(x.item)}</div>${preco ? `<div class="row-sub">${preco}</div>` : ''}</button>
+      ${x.qtd && !x.comprado ? `<span class="item-qtd">${esc(x.qtd)}</span>` : ''}
+      <button class="edit-btn" data-act="editItem" data-id="${x.id}" aria-label="Editar">${icon('pencil')}</button></div>`;
+  };
+  if (falta.length) {
+    h += '<div class="card">';
+    CATS.forEach(([k, l, e]) => {
+      const its = falta.filter(x => catDoItem(x) === k);
+      if (!its.length) return;
+      h += `<div class="cat-h"><span class="cat-ic">${e}</span>${l}<span class="n">${its.length}</span></div>${its.map(linha).join('')}`;
+    });
+    h += '</div>';
+  } else {
+    h += `<div class="card">${vazio('Nada faltando', 'Quando algo acabar, anote aqui. Os dois veem na hora.')}</div>`;
   }
+  if (ok.length) {
+    const tot = totalCarrinho();
+    h += `<div class="sec-h"><h2>No carrinho</h2><span class="person-count">${money(tot)}</span></div>
+      <div class="card">${ok.map(linha).join('')}</div><div style="height:76px"></div>
+      <div class="cartbar"><div class="t"><small>${ok.length} ${ok.length > 1 ? 'itens' : 'item'} no carrinho</small><b>${money(tot)}</b></div>
+      <button data-act="finalizarCompra">Finalizar compra</button></div>`;
+  }
+  return h;
+}
+
+function vHistorico() {
+  const hist = S.data.historico || [];
+  if (!hist.length) return `<div class="card">${vazio('Nenhuma compra ainda', 'Ao marcar os itens, coloque o preço. Quando tocar em "Finalizar compra", tudo vem para cá.')}</div>`;
+  let h = '';
+  // compras
+  const compras = {};
+  hist.forEach(x => { const c = compras[x.compra] = compras[x.compra] || { id: x.compra, data: x.data, total: 0, n: 0 }; c.total += x.total; c.n++; });
+  const lista = Object.values(compras).reverse().sort((a, b) => b.data.localeCompare(a.data));
+  h += `<div class="sec-h" style="margin-top:4px"><h2>Compras</h2></div><div class="card">${lista.slice(0, 8).map(c => `<button class="row" style="width:100%" data-act="verCompra" data-id="${c.id}">
+      <span class="cat-ic">🧾</span><span class="row-main"><span class="row-title" style="display:block">${dataBonita(c.data)}</span><span class="row-sub">${c.n} ${c.n > 1 ? 'itens' : 'item'}</span></span>
+      <span class="row-amt">${money(c.total)}</span></button>`).join('')}</div>`;
+  // preços por item
+  const porItem = {};
+  hist.forEach(x => { if (x.preco > 0) (porItem[x.chave] = porItem[x.chave] || []).push(x); });
+  const busca = chave(S.mer.busca);
+  const itens = Object.entries(porItem).map(([k, xs]) => {
+    xs.sort((a, b) => a.data.localeCompare(b.data));
+    const ult = xs[xs.length - 1], ant = xs.length > 1 ? xs[xs.length - 2] : null;
+    return { k, nome: ult.item, ult, ant, cat: ult.categoria };
+  }).filter(i => !busca || i.k.includes(busca)).sort((a, b) => a.nome.localeCompare(b.nome));
+  h += `<div class="sec-h"><h2>Preços</h2></div>
+    <input class="busca" id="buscaPreco" placeholder="Buscar produto" value="${esc(S.mer.busca)}" autocomplete="off" data-input="buscaPreco">
+    <div class="card">${itens.length ? itens.map(i => `<button class="row" style="width:100%" data-act="verPrecos" data-k="${esc(i.k)}">
+      <span class="cat-ic">${catInfo(i.cat)[2]}</span>
+      <span class="row-main"><span class="row-title" style="display:block">${esc(i.nome)}</span><span class="row-sub">${dataBonita(i.ult.data)}${i.ant ? ' ' + variacao(i.ult.preco, i.ant.preco) : ''}</span></span>
+      <span class="row-amt">${money(i.ult.preco)}</span></button>`).join('') : vazio('Nada encontrado', 'Tente outro nome.')}</div>`;
   return h;
 }
 
@@ -824,8 +976,11 @@ function atualizarCampos() {
 function confirmar(el, fn) {
   if (el.dataset.armed) return fn();
   const txt = el.textContent;
-  el.dataset.armed = '1'; el.classList.add('armed'); el.textContent = 'Toque de novo para confirmar';
-  setTimeout(() => { if (el.isConnected) { delete el.dataset.armed; el.classList.remove('armed'); el.textContent = txt; } }, 3000);
+  const curto = el.classList.contains('x-btn');
+  el.dataset.armed = '1'; el.classList.add('armed');
+  if (curto) el.style.color = 'var(--red)';
+  else el.textContent = el.closest('.cartbar') ? 'Confirmar?' : 'Toque de novo para confirmar';
+  setTimeout(() => { if (el.isConnected) { delete el.dataset.armed; el.classList.remove('armed'); if (curto) el.style.color = ''; else el.textContent = txt; } }, 3000);
 }
 const pessoasForm = () => [...pessoas().map(p => [p, p]), ['Casa', 'Casa']];
 
@@ -883,6 +1038,56 @@ function formData(id, dataSugerida) {
     <button class="btn" data-act="salvarData">${d ? 'Salvar alterações' : 'Adicionar data'}</button>
     ${d ? '<button class="btn quiet" data-act="excluirData">Excluir data</button>' : ''}`, `data-id="${d ? d.id : ''}"`);
 }
+function formPreco(id) {
+  const x = S.data.mercado.find(y => y.id === id);
+  if (!x) return;
+  const ps = precosDe(chave(x.item)), ult = ps[ps.length - 1];
+  const q = x.quantidade > 0 ? x.quantidade : numQtd(x.qtd);
+  abrirFolha(`<h3>Quanto custou?</h3>
+    <p class="hint" style="margin:-10px 2px 16px;font-size:15px"><b style="color:var(--ink)">${esc(x.item)}</b>${x.qtd ? ', ' + esc(x.qtd) : ''}</p>
+    ${ult ? `<div class="ultimo">Última compra: <b>${money(ult.preco)}</b> em ${dataBonita(ult.data)}</div>` : ''}
+    <div class="grid2"><div class="field"><label for="pPreco">Preço (unidade ou kg)</label><div class="money"><input class="input" id="pPreco" inputmode="decimal" placeholder="0,00" value="${x.preco > 0 ? fmtValor(x.preco) : ''}" data-input="calcTotal" data-enter="salvarPreco"></div></div>
+    <div class="field"><label for="pQtd">Quantidade</label><input class="input" id="pQtd" inputmode="decimal" value="${fmtNum(q)}" data-input="calcTotal" data-enter="salvarPreco"></div></div>
+    <div class="total-box"><span>Total do item</span><b id="pTotal">${money((x.preco || 0) * q)}</b></div>
+    <button class="btn" data-act="salvarPreco">Colocar no carrinho</button>
+    <button class="btn soft" style="margin-top:10px" data-act="semPreco">Pegar sem preço</button>`, `data-id="${x.id}"`);
+  setTimeout(() => { const i = $('#pPreco'); if (i) i.focus(); }, 350);
+}
+function formItem(id) {
+  const x = S.data.mercado.find(y => y.id === id);
+  if (!x) return toast('Esse item não está mais na lista.');
+  abrirFolha(`<h3>Editar item</h3>
+    <div class="field"><label for="eNome">Item</label><input class="input" id="eNome" value="${esc(x.item)}"></div>
+    <div class="field"><label for="eQtd">Quantidade <span style="font-weight:500">(opcional)</span></label><input class="input" id="eQtd" value="${esc(x.qtd)}" placeholder="Ex.: 2 kg, 3 pacotes"></div>
+    <div class="field"><label>Categoria</label>${seg('ecat', CATS.map(([k, l, e]) => [k, e + ' ' + l]), catDoItem(x)).replace('class="seg"', 'class="seg chips"')}</div>
+    ${x.comprado ? `<div class="grid2"><div class="field"><label for="ePreco">Preço (unidade ou kg)</label><div class="money"><input class="input" id="ePreco" inputmode="decimal" value="${x.preco > 0 ? fmtValor(x.preco) : ''}" placeholder="0,00"></div></div>
+      <div class="field"><label for="eQn">Quantidade comprada</label><input class="input" id="eQn" inputmode="decimal" value="${fmtNum(x.quantidade || 1)}"></div></div>` : ''}
+    <button class="btn" data-act="salvarItem">Salvar</button>
+    <button class="btn quiet" data-act="excluirItemFolha">Excluir item</button>`, `data-id="${x.id}"`);
+}
+function formPrecos(k) {
+  const ps = precosDe(k);
+  if (!ps.length) return;
+  const vals = ps.map(p => p.preco), min = Math.min(...vals), max = Math.max(...vals);
+  const media = vals.reduce((a, b) => a + b, 0) / vals.length;
+  abrirFolha(`<h3>${esc(ps[ps.length - 1].item)}</h3>
+    <div class="mini-stats"><div><span>Menor</span><b>${money(min)}</b></div><div><span>Média</span><b>${money(media)}</b></div><div><span>Maior</span><b>${money(max)}</b></div></div>
+    <div>${ps.slice().reverse().map((p, i, arr) => `<div class="row"><div class="row-main"><div class="row-title">${dataBonita(p.data)} de ${p.data.slice(0, 4)}</div>
+      <div class="row-sub">${fmtNum(p.quantidade)} × ${money(p.preco)}${p.por ? ', ' + esc(p.por) : ''}${arr[i + 1] ? ' ' + variacao(p.preco, arr[i + 1].preco) : ''}</div></div>
+      <div class="row-amt">${money(p.preco)}</div><button class="x-btn" data-act="delPreco" data-id="${p.id}" data-k="${esc(k)}" aria-label="Apagar este preço">${icon('x')}</button></div>`).join('')}</div>
+    <p class="hint">O X apaga um preço digitado errado.</p>`);
+}
+function formCompra(id) {
+  const its = (S.data.historico || []).filter(h => h.compra === id);
+  if (!its.length) return;
+  const tot = its.reduce((s, x) => s + x.total, 0);
+  abrirFolha(`<h3>Compra de ${dataBonita(its[0].data)}</h3>
+    <div class="total-box"><span>${its.length} ${its.length > 1 ? 'itens' : 'item'}</span><b>${money(tot)}</b></div>
+    <div>${its.slice().sort((a, b) => a.item.localeCompare(b.item)).map(x => `<div class="row"><span class="cat-ic">${catInfo(x.categoria)[2]}</span>
+      <div class="row-main"><div class="row-title">${esc(x.item)}</div><div class="row-sub">${fmtNum(x.quantidade)} × ${money(x.preco)}</div></div>
+      <div class="row-amt">${money(x.total)}</div></div>`).join('')}</div>`);
+}
+
 function formQuem() {
   abrirFolha(`<h3>Ajustes</h3>
     <div class="field"><label>Quem está usando este celular</label>
@@ -1035,19 +1240,76 @@ const A = {
   delAviso(el) { const id = el.dataset.id; mutate('excluirAviso', [id], () => { S.data.avisos = S.data.avisos.filter(a => a.id !== id); }); },
 
   // Mercado
+  merSub(el) { S.mer.sub = el.dataset.s; render(); window.scrollTo(0, 0); },
+  catAdd(el) { S.mer.cat = el.dataset.c; S.mer.catManual = true; marcarCatAdd(); },
   addItem() {
     const i = $('#mItem'), q = $('#mQtd'), item = i.value.trim(), qtd = q.value.trim();
     if (!item) return i.focus();
-    i.value = ''; q.value = '';
-    mutate('adicionarItem', [item, qtd, S.user], () => {
-      const ex = S.data.mercado.find(x => !x.comprado && x.item.toLowerCase() === item.toLowerCase());
-      if (ex) { if (qtd) ex.qtd = qtd; } else S.data.mercado.push({ id: 'tmp' + Date.now(), item, qtd, comprado: false, adicionado_por: S.user });
+    const cat = S.mer.catManual && S.mer.cat ? S.mer.cat : classificar(item);
+    i.value = ''; q.value = ''; S.mer.cat = null; S.mer.catManual = false;
+    mutate('adicionarItem', [item, qtd, S.user, cat], () => {
+      const ex = S.data.mercado.find(x => !x.comprado && chave(x.item) === chave(item));
+      if (ex) { if (qtd) ex.qtd = qtd; ex.categoria = cat; }
+      else S.data.mercado.push({ id: 'tmp' + Date.now(), item, qtd, comprado: false, adicionado_por: S.user, categoria: cat, preco: 0, quantidade: 0 });
     });
     setTimeout(() => { const el = $('#mItem'); if (el) el.focus(); }, 0);
   },
-  toggleItem(el) { const x = S.data.mercado.find(y => y.id === el.dataset.id); if (!x) return; mutate('alternarItem', [x.id], () => { x.comprado = !x.comprado; }); },
-  delItem(el) { const id = el.dataset.id; mutate('excluirItem', [id], () => { S.data.mercado = S.data.mercado.filter(x => x.id !== id); }); },
-  limparComprados() { mutate('limparComprados', [], () => { S.data.mercado = S.data.mercado.filter(x => !x.comprado); }, 'Lista limpa'); },
+  toggleItem(el) {
+    const x = S.data.mercado.find(y => y.id === el.dataset.id);
+    if (!x) return;
+    if (x.comprado) return mutate('alternarItem', [x.id], () => { x.comprado = false; });
+    if (String(x.id).startsWith('tmp')) return toast('Salvando o item, tente de novo em um instante.');
+    formPreco(x.id);
+  },
+  salvarPreco() {
+    const id = sheetId(), x = S.data.mercado.find(y => y.id === id);
+    if (!x) return fecharFolha();
+    const preco = parseValor($('#pPreco').value), qtd = parseValor($('#pQtd').value) || 1;
+    if (!preco) return toast('Digite o preço, ou toque em "Pegar sem preço"');
+    fecharFolha();
+    mutate('marcarComprado', [id, preco, qtd], () => { x.comprado = true; x.preco = preco; x.quantidade = qtd; });
+    if (navigator.vibrate) navigator.vibrate(10);
+  },
+  semPreco() {
+    const id = sheetId(), x = S.data.mercado.find(y => y.id === id);
+    if (!x) return fecharFolha();
+    fecharFolha();
+    mutate('marcarComprado', [id, 0, numQtd(x.qtd)], () => { x.comprado = true; x.preco = 0; x.quantidade = numQtd(x.qtd); });
+  },
+  editItem(el) { formItem(el.dataset.id); },
+  salvarItem() {
+    const id = sheetId(), x = S.data.mercado.find(y => y.id === id);
+    if (!x) return fecharFolha();
+    const d = { item: $('#eNome').value.trim(), qtd: $('#eQtd').value.trim(), categoria: segVal('ecat') };
+    if (!d.item) return toast('Digite o nome do item');
+    if ($('#ePreco')) { d.preco = parseValor($('#ePreco').value); d.quantidade = parseValor($('#eQn').value) || 1; }
+    fecharFolha();
+    mutate('editarItem', [id, d], () => Object.assign(x, d), 'Item atualizado');
+  },
+  excluirItemFolha(el) {
+    confirmar(el, () => { const id = sheetId(); fecharFolha(); mutate('excluirItem', [id], () => { S.data.mercado = S.data.mercado.filter(x => x.id !== id); }, 'Item excluído'); });
+  },
+  finalizarCompra(el) {
+    confirmar(el, () => {
+      const tot = totalCarrinho();
+      mutate('finalizarCompra', [S.user], () => {
+        const hoje = today(), compra = 'tmp' + Date.now();
+        S.data.mercado.filter(x => x.comprado && x.preco > 0).forEach(x => (S.data.historico = S.data.historico || []).push({
+          id: 'tmp' + Math.random(), compra, data: hoje, item: x.item, chave: chave(x.item), categoria: catDoItem(x),
+          preco: x.preco, quantidade: x.quantidade || 1, total: x.preco * (x.quantidade || 1), por: S.user }));
+        S.data.mercado = S.data.mercado.filter(x => !x.comprado);
+      }, tot ? 'Compra de ' + money(tot) + ' salva no histórico' : 'Compra finalizada');
+    });
+  },
+  verPrecos(el) { formPrecos(el.dataset.k); },
+  verCompra(el) { formCompra(el.dataset.id); },
+  delPreco(el) {
+    confirmar(el, () => {
+      const id = el.dataset.id, k = el.dataset.k;
+      mutate('excluirPreco', [id], () => { S.data.historico = S.data.historico.filter(h => h.id !== id); });
+      if (precosDe(k).length) formPrecos(k); else fecharFolha();
+    });
+  },
 
   // Datas
   datMes(el) { S.dat.ym = addM(S.dat.ym, +el.dataset.d); S.dat.sel = null; render(); },
@@ -1081,6 +1343,29 @@ document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
   const el = e.target.closest('[data-enter]');
   if (el && A[el.dataset.enter]) { e.preventDefault(); A[el.dataset.enter](el, e); }
+});
+function marcarCatAdd() {
+  const box = $('#catPick'); if (!box) return;
+  box.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.c === S.mer.cat));
+  const on = box.querySelector('.on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+const ENTRADA = {
+  calcTotal() {
+    const t = $('#pTotal'); if (!t) return;
+    t.textContent = money(parseValor($('#pPreco').value) * (parseValor($('#pQtd').value) || 1));
+  },
+  buscaPreco(el) {
+    S.mer.busca = el.value;
+    const pos = el.selectionStart;
+    render();
+    const b = $('#buscaPreco'); if (b) { b.focus(); try { b.setSelectionRange(pos, pos); } catch (e) {} }
+  }
+};
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'mItem' && !S.mer.catManual) { S.mer.cat = t.value.trim() ? classificar(t.value) : null; marcarCatAdd(); }
+  const fn = t.dataset && ENTRADA[t.dataset.input];
+  if (fn) fn(t);
 });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && S.data && S.pending === 0 && !$('.sheet')) { load(true); atualizarStatusPush(); }
